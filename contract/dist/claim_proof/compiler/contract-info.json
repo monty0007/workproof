@@ -1,0 +1,112 @@
+{
+  "compiler-version": "0.30.0",
+  "language-version": "0.22.0",
+  "runtime-version": "0.15.0",
+  "circuits": [
+    {
+      "name": "claim_employment",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "c_id",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "u_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "co_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "c_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "employment_days",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "verify_claim",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "c_id",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "v_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "c_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "v_type",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "vp_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+  ],
+  "contracts": [
+  ]
+}

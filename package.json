@@ -1,0 +1,25 @@
+{
+  "name": "workproof",
+  "version": "1.0.0",
+  "description": "AI-powered employment verification with ZK proofs on Midnight Network",
+  "private": true,
+  "type": "module",
+  "keywords": ["midnightntwrk", "compact", "zero-knowledge", "employment-verification", "midnight-network"],
+  "scripts": {
+    "backend": "cd backend && ../.venv/bin/python3 -m uvicorn main:app --reload --port 8000",
+    "midnight-service": "cd midnight-service && node index.js",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "concurrently -n backend,midnight,frontend -c cyan,magenta,green \"npm run backend\" \"npm run midnight-service\" \"npm run frontend\"",
+    "test": "node contract/test/circuit.test.js",
+    "compile": "npx nightforge compile",
+    "install:all": "cd frontend && npm install && cd ../midnight-service && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "nightforge": "^0.0.6"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-js": "^2.5.0",
+    "@midnight-ntwrk/compact-runtime": "^0.15.0"
+  }
+}

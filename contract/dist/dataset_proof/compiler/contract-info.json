@@ -1,0 +1,112 @@
+{
+  "compiler-version": "0.30.0",
+  "language-version": "0.22.0",
+  "runtime-version": "0.15.0",
+  "circuits": [
+    {
+      "name": "commit_dataset",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "d_id",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "empl_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "schema_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "timestamp",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "record_count",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        },
+        {
+          "name": "min_record_count",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        },
+        {
+          "name": "deidentified",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "prove_training",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "d_id",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "m_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "s_hash",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "training_rows",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+  ],
+  "contracts": [
+  ]
+}

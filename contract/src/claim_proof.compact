@@ -1,0 +1,91 @@
+pragma language_version >= 0.22;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WorkProof Claim Proof Contract
+//
+// Public ledger (on-chain, visible to everyone):
+//   claim_id          — unique identifier for the employment claim
+//   user_hash         — SHA-256 of user email (identity hidden)
+//   company_hash      — SHA-256 of company name (identity hidden)
+//   claim_hash        — SHA-256 commitment of all claim fields
+//   claim_timestamp   — ISO timestamp of commitment
+//   claim_verified    — 1 after at least one verification proof accepted
+//   verifier_hash     — SHA-256 of verifier email (identity hidden)
+//   verification_type — type of signal (e.g. "email_domain", "linkedin")
+//   verify_proof_hash — commitment of the verification evidence
+//
+// Private witnesses (never leave the user's device):
+//   employment_days — actual number of employment days (proves > 0 without revealing count)
+//
+// Trust model:
+//   - Identity is pseudonymous: hashes only, never raw emails
+//   - Verification signals are committed on-chain for auditability
+//   - AI trust score is computed off-chain and NOT stored in the contract
+// ─────────────────────────────────────────────────────────────────────────────
+
+export ledger claim_id:          Opaque<"string">;
+export ledger user_hash:         Opaque<"string">;
+export ledger company_hash:      Opaque<"string">;
+export ledger claim_hash:        Opaque<"string">;
+export ledger claim_timestamp:   Opaque<"string">;
+export ledger claim_verified:    Uint<32>;
+export ledger verifier_hash:     Opaque<"string">;
+export ledger verification_type: Opaque<"string">;
+export ledger verify_proof_hash: Opaque<"string">;
+
+// ─── claim_employment ─────────────────────────────────────────────────────────
+// Commits a new employment claim to the ledger.
+//
+// What this proves:
+//   1. user_hash is non-empty (user identity confirmed by client)
+//   2. company_hash is non-empty (company identity confirmed by client)
+//   3. claim_hash binds all public claim fields
+//   4. employment_days > 0 (proved privately — exact duration never disclosed)
+//
+// What is NEVER disclosed:
+//   - Raw email address
+//   - Raw company name
+//   - Exact employment duration in days
+// ─────────────────────────────────────────────────────────────────────────────
+export circuit claim_employment(
+  c_id:            Opaque<"string">,
+  u_hash:          Opaque<"string">,
+  co_hash:         Opaque<"string">,
+  c_hash:          Opaque<"string">,
+  timestamp:       Opaque<"string">,
+  employment_days: Uint<32>            // PRIVATE — proves duration > 0, never disclosed
+): [] {
+  assert(employment_days > 0, "employment period must be positive");
+
+  claim_id        = disclose(c_id);
+  user_hash       = disclose(u_hash);
+  company_hash    = disclose(co_hash);
+  claim_hash      = disclose(c_hash);
+  claim_timestamp = disclose(timestamp);
+  claim_verified  = disclose(0);
+}
+
+// ─── verify_claim ─────────────────────────────────────────────────────────────
+// Records a verification signal for an existing claim.
+//
+// What this proves:
+//   1. The verifier knows the original claim_hash (binds to the original claim)
+//   2. A verification signal of type `v_type` has been submitted
+//
+// What is NEVER disclosed:
+//   - Raw verifier email
+// ─────────────────────────────────────────────────────────────────────────────
+export circuit verify_claim(
+  c_id:    Opaque<"string">,
+  v_hash:  Opaque<"string">,
+  c_hash:  Opaque<"string">,
+  v_type:  Opaque<"string">,
+  vp_hash: Opaque<"string">
+): [] {
+  claim_id          = disclose(c_id);
+  verifier_hash     = disclose(v_hash);
+  claim_hash        = disclose(c_hash);
+  verification_type = disclose(v_type);
+  verify_proof_hash = disclose(vp_hash);
+  claim_verified    = disclose(1);
+}

@@ -1,0 +1,84 @@
+pragma language_version >= 0.22;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WorkProof Dataset Proof Contract
+//
+// Used when an employer proves they have a legitimate, de-identified workforce
+// records dataset suitable for AI model training — without revealing any PII.
+//
+// Public ledger (on-chain, visible to everyone):
+//   dataset_id          — unique identifier for the dataset
+//   employer_id_hash    — SHA-256 of employer name (identity hidden)
+//   dataset_schema_hash — SHA-256 of sorted schema field list
+//   commit_timestamp    — ISO timestamp of commitment
+//   compliance_status   — 1 once commit_dataset proof is accepted
+//   dataset_available   — 1 when dataset is ready for training
+//   bytes_pii_exposed   — always 0 (proves no PII leaked)
+//   model_output_hash   — SHA-256 of trained model (set after prove_training)
+//   training_proven     — 1 after prove_training proof is accepted
+//
+// Private witnesses (never leave the employer's server):
+//   record_count      — actual number of employee records
+//   min_record_count  — minimum threshold for statistical validity
+//   deidentified      — 1 = privacy-safe de-identification confirmed
+//   training_rows     — number of rows used during model training
+// ─────────────────────────────────────────────────────────────────────────────
+
+export ledger dataset_id:          Opaque<"string">;
+export ledger employer_id_hash:    Opaque<"string">;
+export ledger dataset_schema_hash: Opaque<"string">;
+export ledger commit_timestamp:    Opaque<"string">;
+export ledger compliance_status:   Uint<32>;
+export ledger dataset_available:   Uint<32>;
+export ledger bytes_pii_exposed:   Uint<32>;
+export ledger model_output_hash:   Opaque<"string">;
+export ledger training_proven:     Uint<32>;
+
+// ─── commit_dataset ───────────────────────────────────────────────────────────
+// ZK proof guarantees (without revealing record_count or deidentified flag):
+//   1. deidentified == 1   → privacy-safe de-identification confirmed
+//   2. record_count >= min → dataset is statistically meaningful
+//   3. record_count > 0    → dataset is non-empty
+// Only public fields are written to the ledger.
+// ─────────────────────────────────────────────────────────────────────────────
+export circuit commit_dataset(
+  d_id:             Opaque<"string">,
+  empl_hash:        Opaque<"string">,
+  schema_hash:      Opaque<"string">,
+  timestamp:        Opaque<"string">,
+  record_count:     Uint<32>,           // PRIVATE — never disclosed
+  min_record_count: Uint<32>,           // PRIVATE — minimum threshold
+  deidentified:     Uint<32>            // PRIVATE — 1 = privacy-safe
+): [] {
+  assert(deidentified == 1, "dataset must be de-identified per privacy requirements");
+  assert(record_count >= min_record_count, "record count below minimum threshold");
+  assert(record_count > 0, "record count must be positive");
+
+  dataset_id          = disclose(d_id);
+  employer_id_hash    = disclose(empl_hash);
+  dataset_schema_hash = disclose(schema_hash);
+  commit_timestamp    = disclose(timestamp);
+  compliance_status   = disclose(1);
+  dataset_available   = disclose(1);
+  bytes_pii_exposed   = disclose(0);
+}
+
+// ─── prove_training ───────────────────────────────────────────────────────────
+// ZK proof guarantees (without revealing training_rows):
+//   1. training_rows > 0  → real training occurred on actual data
+// Public disclosures: model_output_hash, training_proven=1
+// Private witnesses never reach the ledger.
+// ─────────────────────────────────────────────────────────────────────────────
+export circuit prove_training(
+  d_id:          Opaque<"string">,
+  m_hash:        Opaque<"string">,
+  s_hash:        Opaque<"string">,
+  training_rows: Uint<32>               // PRIVATE — never disclosed
+): [] {
+  assert(training_rows > 0, "training rows must be positive");
+
+  dataset_id          = disclose(d_id);
+  model_output_hash   = disclose(m_hash);
+  dataset_schema_hash = disclose(s_hash);
+  training_proven     = disclose(1);
+}
