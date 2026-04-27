@@ -8,6 +8,22 @@ Users prove they worked at companies — claims are committed on-chain, AI-score
 
 ---
 
+## Screenshots
+
+**Overview — Employment proof, without blind trust**
+![WorkProof home page showing ZK proof stats and three-step protocol](docs/screenshots/home.png)
+
+**My Claims — Submit an employment claim**
+![User submitting an employment claim with role, company and dates](docs/screenshots/user.png)
+
+**Discover — Browse verified claims**
+![Recruiter view showing proven claims with trust scores](docs/screenshots/recruiter.png)
+
+**Verify — Add a verification signal**
+![Verification portal for adding email domain, LinkedIn or document signals](docs/screenshots/verification.png)
+
+---
+
 ## How It Works
 
 ```
