@@ -185,20 +185,33 @@ async def verify_claim(req: VerifyClaimRequest):
     verifier_hash = sha256(req.verifier_email.lower().strip())
     timestamp     = datetime.now(timezone.utc).isoformat()
 
-    # Determine email domain match if a domain was provided
-    email_domain_match = False
-    if req.company_email_domain:
-        user_email_domain = req.verifier_email.split("@")[-1].lower().strip() if "@" in req.verifier_email else ""
-        email_domain_match = (user_email_domain == req.company_email_domain.lower().strip())
+    # An email_domain signal counts as confirmation when a domain is supplied
+    # by the verifier — they are attesting the candidate worked at this domain.
+    email_domain_match = bool(
+        req.verification_type == "email_domain" and (req.company_email_domain or "").strip()
+    )
 
-    # Re-score with new verification signals
+    # Aggregate prior verifications so each new signal builds on the last one
+    # instead of resetting the score.
+    prior = await get_verifications(req.claim_id)
+    prior_types = {v["verification_type"] for v in prior}
+    if "email_domain" in prior_types:
+        email_domain_match = True
+
+    linkedin_match = req.linkedin_match
+    if linkedin_match is None and "linkedin" in prior_types:
+        linkedin_match = True
+
+    endorsements = (req.endorsements or 0) + sum(1 for v in prior if v["verification_type"] == "manual")
+
+    # Re-score with the full accumulated signal set
     ai_result = compute_trust_score(
         role=claim["role"],
         start_date=claim["start_date"],
         end_date=claim.get("end_date"),
         email_domain_match=email_domain_match,
-        linkedin_match=req.linkedin_match,
-        endorsements=req.endorsements or 0,
+        linkedin_match=linkedin_match,
+        endorsements=endorsements,
     )
     log_ai.info(f"Updated score  claim={req.claim_id[:12]}…  score={ai_result['trust_score']}  type={req.verification_type}")
 

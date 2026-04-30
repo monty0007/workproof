@@ -12,11 +12,15 @@ const NETWORK_ID = 'preprod'   // matches Lace preprod config
  * Wait up to `ms` milliseconds for any Midnight wallet to inject into window.midnight.
  */
 async function waitForWallet(ms = 3000) {
+  // Fast path: if Lace is already injected (page fully loaded), return immediately
+  const immediate = findLaceAPI()
+  if (immediate) return immediate
+  // Slow path: extension may still be injecting (e.g. slow machine / fresh page load)
   const deadline = Date.now() + ms
   while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100))
     const api = findLaceAPI()
     if (api) return api
-    await new Promise(r => setTimeout(r, 100))
   }
   return null
 }

@@ -50,3 +50,52 @@ logs/
 # Midnight / ZK artifacts
 *.zk
 *.proof
+
+# PowerPoint / Office temp & lock files
+~$*.pptx
+~$*.docx
+~$*.xlsx
+*.pptx.tmp
+
+# Generated / working artifacts
+WorkProof Deck.pptx
+docs/screenshots/*.tmp
+scripts/__pycache__/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Node tooling
+.npm/
+.pnpm-store/
+.eslintcache
+
+# Editor / misc
+*.bak
+*.orig
+.history/
+.cache/
+
+# Images / media (generated demo frames, exports, etc.)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+*.svg
+*.ico
+*.tiff
+*.mp4
+*.mov
+*.webm
+*.gif
+# Keep screenshots referenced from README
+!docs/screenshots/
+!docs/screenshots/**

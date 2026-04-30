@@ -39,7 +39,7 @@ export function useMidnight() {
     return () => { alive = false; clearInterval(t) }
   }, [])
 
-  // ── Auto-reconnect on page load if previously connected ──────────────────
+  // ── Auto-reconnect on page load if previously connected ──────────────
   useEffect(() => {
     if (localStorage.getItem(WALLET_KEY) !== '1') return
     let cancelled = false
@@ -56,7 +56,6 @@ export function useMidnight() {
         setWalletDemo(api._demo === true)
       } catch {
         if (!cancelled) {
-          // Silent fail — just show disconnected, don't block the UI
           setWalletStatus('disconnected')
           localStorage.removeItem(WALLET_KEY)
         }
@@ -83,6 +82,15 @@ export function useMidnight() {
     }
   }, [])
 
+  const disconnect = useCallback(() => {
+    walletApiRef.current = null
+    setWalletStatus('disconnected')
+    setWalletAddress(null)
+    setWalletError(null)
+    setWalletDemo(false)
+    localStorage.removeItem(WALLET_KEY)
+  }, [])
+
   /**
    * Generate a ZK proof and submit on-chain.
    * In WorkProof, proofs are submitted via the Python backend → midnight-service.
@@ -101,6 +109,7 @@ export function useMidnight() {
     walletDemo,
     isLaceInstalled: isLaceInstalled(),
     connect,
+    disconnect,
     // Midnight service + proof server
     serviceUp: serviceStatus.serviceUp,
     proofServerUp: serviceStatus.proofServerUp,

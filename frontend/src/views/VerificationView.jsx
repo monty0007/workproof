@@ -22,8 +22,9 @@ export default function VerificationView({ setCurrentTab, initialQuery, onQueryC
   const [error,     setError]     = useState(null)
   const [success,   setSuccess]   = useState(null)
   const [log,       setLog]       = useState([])
+  const [allClaims, setAllClaims] = useState([])
 
-  useEffect(() => { loadLog() }, [])
+  useEffect(() => { loadLog(); loadClaims() }, [])
 
   useEffect(() => {
     if (initialQuery) {
@@ -57,7 +58,19 @@ export default function VerificationView({ setCurrentTab, initialQuery, onQueryC
       const r = await fetch('/api/audit/log')
       if (r.ok) {
         const d = await r.json()
-        setLog((d.log || d.entries || []).slice(0, 12))
+        const entries = Array.isArray(d) ? d : (d.log || d.entries || [])
+        setLog(entries.slice(0, 12))
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function loadClaims() {
+    try {
+      const r = await fetch('/api/claims')
+      if (r.ok) {
+        const d = await r.json()
+        const list = Array.isArray(d) ? d : (d.claims || [])
+        setAllClaims(list)
       }
     } catch { /* ignore */ }
   }
@@ -83,6 +96,7 @@ export default function VerificationView({ setCurrentTab, initialQuery, onQueryC
       setSuccess(d)
       refreshClaim(claim.claim_id)
       loadLog()
+      loadClaims()
     } catch (e) { setError(e.message) }
     finally { setBusy(false) }
   }
@@ -289,16 +303,62 @@ export default function VerificationView({ setCurrentTab, initialQuery, onQueryC
                      style={{ width: 64, height: 64, background: 'var(--surface-3)', border: '1px solid var(--line-2)' }}>
                   <span className="material-symbols-outlined" style={{ color: 'var(--ink-4)', fontSize: 32 }}>search</span>
                 </div>
-                <h3 className="headline font-bold text-xl mb-2">Look up a claim to begin</h3>
+                <h3 className="headline font-bold text-xl mb-2">Pick a claim to begin</h3>
                 <p className="text-sm" style={{ color: 'var(--ink-4)' }}>
-                  Paste a claim ID above, or open the recruiter portal and click <em>Send to Verification</em>.
+                  Click any claim from <em>Recent claims</em> on the right, paste a claim ID above, or use <em>Send to Verification</em> from the recruiter portal.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Side rail — audit log */}
+          {/* Side rail */}
           <aside className="space-y-5 xl:sticky xl:top-24">
+            {/* Recent claims picker */}
+            <div className="card p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="eyebrow">Recent claims</p>
+                <button onClick={loadClaims} className="btn btn-ghost btn-sm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>refresh</span>
+                </button>
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--ink-4)' }}>
+                Click any claim to load it for verification.
+              </p>
+              {allClaims.length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No claims submitted yet.</p>
+              )}
+              <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                {allClaims.slice(0, 10).map(c => {
+                  const sc = c.trust_score >= 70 ? 'var(--success)' : c.trust_score >= 40 ? 'var(--warning)' : 'var(--danger)'
+                  const isActive = claim?.claim_id === c.claim_id
+                  return (
+                    <button
+                      key={c.claim_id}
+                      onClick={() => { setLookupId(c.claim_id); lookupClaim(c.claim_id) }}
+                      className="w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-center gap-3"
+                      style={{
+                        background: isActive ? 'rgba(45,212,191,0.10)' : 'var(--surface-3)',
+                        border: `1px solid ${isActive ? 'var(--mint)' : 'var(--line-1)'}`,
+                      }}>
+                      <div
+                        className="flex items-center justify-center rounded-md flex-shrink-0 mono text-[11px] font-bold tabular-nums"
+                        style={{ width: 32, height: 32, background: `${sc}1c`, color: sc, border: `1px solid ${sc}55` }}>
+                        {c.trust_score}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--ink-1)' }}>{c.role || 'Untitled role'}</p>
+                        <p className="hash mt-0.5 truncate" style={{ fontSize: 10 }}>{c.claim_id?.slice(0, 18)}…</p>
+                      </div>
+                      {c.verified > 0 && (
+                        <span className="badge badge-mint" style={{ fontSize: 9, padding: '2px 6px' }}>{c.verified}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Audit log */}
             <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
                 <p className="eyebrow">Recent audit log</p>
@@ -309,13 +369,13 @@ export default function VerificationView({ setCurrentTab, initialQuery, onQueryC
               {log.length === 0 && (
                 <p className="text-sm" style={{ color: 'var(--ink-4)' }}>No verifications yet.</p>
               )}
-              <div className="space-y-2 max-h-[520px] overflow-y-auto">
+              <div className="space-y-2 max-h-[320px] overflow-y-auto">
                 {log.map((e, i) => (
                   <div key={i} className="px-3 py-2.5 rounded-lg"
                        style={{ background: 'var(--surface-3)', border: '1px solid var(--line-1)' }}>
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span className="text-xs font-semibold" style={{ color: 'var(--mint-2)' }}>
-                        {e.verification_type?.replace(/_/g, ' ') || e.action || 'event'}
+                        {(e.event_type || e.verification_type || e.action || 'event').replace(/_/g, ' ')}
                       </span>
                       <span className="text-[10px]" style={{ color: 'var(--ink-5)' }}>
                         {e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : ''}

@@ -57,14 +57,25 @@ function WalletButton({ midnight, compact = false }) {
 
   if (status === 'connected') {
     return (
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded-xl mono text-xs"
-        style={{ background: 'var(--surface-3)', border: '1px solid var(--line-2)', color: 'var(--ink-1)' }}>
-        <span className="dot" style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
-        {midnight.walletAddress?.slice(0, compact ? 6 : 9)}…
-        {midnight.walletDemo && (
-          <span className="badge badge-amber" style={{ padding: '2px 6px', fontSize: 9 }}>DEMO</span>
-        )}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl mono text-xs"
+          style={{ background: 'var(--surface-3)', border: '1px solid var(--line-2)', color: 'var(--ink-1)' }}>
+          <span className="dot" style={{ background: 'var(--success)', boxShadow: '0 0 8px var(--success)' }} />
+          {midnight.walletAddress?.slice(0, compact ? 6 : 9)}…
+          {midnight.walletDemo && (
+            <span className="badge badge-amber" style={{ padding: '2px 6px', fontSize: 9 }}>DEMO</span>
+          )}
+        </div>
+        <button
+          onClick={midnight?.disconnect}
+          title="Disconnect wallet"
+          className="flex items-center justify-center rounded-lg transition-colors"
+          style={{ width: 30, height: 30, background: 'var(--surface-3)', border: '1px solid var(--line-2)', color: 'var(--ink-4)' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--rose-2)'; e.currentTarget.style.borderColor = 'rgba(244,63,94,0.4)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--ink-4)'; e.currentTarget.style.borderColor = 'var(--line-2)' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 15 }}>logout</span>
+        </button>
       </div>
     )
   }

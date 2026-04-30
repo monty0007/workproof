@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage.js'
 
 const ZK_STEPS = [
@@ -26,6 +26,35 @@ export default function UserView({ setCurrentTab }) {
   const [zkStep,     setZkStep]     = useState(0)
   const [error,      setError]      = useState(null)
   const [currentJob, setCurrentJob] = useState(false)
+  const [copied,     setCopied]     = useState('')   // which field was just copied
+
+  function copy(value, label) {
+    navigator.clipboard.writeText(value)
+    setCopied(label)
+    setTimeout(() => setCopied(c => (c === label ? '' : c)), 1600)
+  }
+
+  // ── Keep the success view's trust_score / flags in sync with the backend.
+  //    Verifications added on the Verify page bump the score — reflect that here.
+  useEffect(() => {
+    if (!result?.claim_id) return
+    let cancelled = false
+    async function refresh() {
+      try {
+        const r = await fetch(`/api/audit/${result.claim_id}`)
+        if (!r.ok) return
+        const fresh = await r.json()
+        if (cancelled) return
+        if (fresh.trust_score !== result.trust_score ||
+            JSON.stringify(fresh.flags || []) !== JSON.stringify(result.flags || [])) {
+          setResult({ ...result, trust_score: fresh.trust_score, flags: fresh.flags || [] })
+        }
+      } catch { /* ignore */ }
+    }
+    refresh()
+    const t = setInterval(refresh, 4000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [result?.claim_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startOver() {
     Object.values(LS).forEach(k => localStorage.removeItem(k))
@@ -112,12 +141,30 @@ export default function UserView({ setCurrentTab }) {
             )}
 
             <div className="rounded-xl p-5 space-y-4 mb-6" style={{ background: 'var(--surface-3)', border: '1px solid var(--line-1)' }}>
-              {[['Claim ID', result.claim_id], ['Proof Hash', result.proof_hash]].map(([k, v]) => (
-                <div key={k}>
-                  <p className="eyebrow mb-1.5">{k}</p>
-                  <p className="hash">{v}</p>
-                </div>
-              ))}
+              {[['Claim ID', result.claim_id], ['Proof Hash', result.proof_hash]].map(([k, v]) => {
+                const isCopied = copied === k
+                return (
+                  <div key={k}>
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <p className="eyebrow">{k}</p>
+                      <button
+                        onClick={() => copy(v, k)}
+                        className="flex items-center gap-1.5 text-xs font-semibold transition-colors px-2 py-1 rounded-md"
+                        style={{
+                          color: isCopied ? 'var(--success)' : 'var(--ink-3)',
+                          background: isCopied ? 'rgba(52,211,153,0.10)' : 'transparent',
+                          border: `1px solid ${isCopied ? 'rgba(52,211,153,0.4)' : 'var(--line-2)'}`,
+                        }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, fontVariationSettings: isCopied ? "'FILL' 1" : "'FILL' 0" }}>
+                          {isCopied ? 'check' : 'content_copy'}
+                        </span>
+                        {isCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <p className="hash break-all">{v}</p>
+                  </div>
+                )
+              })}
               <div className="divider" />
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--success)' }}>
@@ -172,10 +219,17 @@ export default function UserView({ setCurrentTab }) {
               <div className="flex gap-2">
                 <input className="input mono text-xs" readOnly value={result.claim_id} onClick={e => e.target.select()} />
                 <button
-                  onClick={() => navigator.clipboard.writeText(result.claim_id)}
-                  className="btn btn-ghost btn-sm flex-shrink-0">
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>content_copy</span>
-                  Copy
+                  onClick={() => copy(result.claim_id, 'side')}
+                  className="btn btn-sm flex-shrink-0"
+                  style={{
+                    background: copied === 'side' ? 'rgba(52,211,153,0.12)' : 'var(--surface-3)',
+                    color:      copied === 'side' ? 'var(--success)' : 'var(--ink-2)',
+                    border:     `1px solid ${copied === 'side' ? 'rgba(52,211,153,0.5)' : 'var(--line-2)'}`,
+                  }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, fontVariationSettings: copied === 'side' ? "'FILL' 1" : "'FILL' 0" }}>
+                    {copied === 'side' ? 'check_circle' : 'content_copy'}
+                  </span>
+                  {copied === 'side' ? 'Copied!' : 'Copy'}
                 </button>
               </div>
             </div>
@@ -314,42 +368,36 @@ export default function UserView({ setCurrentTab }) {
             </div>
           </div>
 
-          {/* Side rail: live ZK pipeline */}
+          {/* Side rail: ZK pipeline (static preview — animates in overlay on submit) */}
           <aside className="space-y-5 xl:sticky xl:top-24">
             <div className="card p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-5">
                 <div>
                   <p className="eyebrow mb-1">Proof pipeline</p>
-                  <h3 className="headline font-bold text-lg">{loading ? 'Generating ZK proof' : 'Ready to commit'}</h3>
+                  <h3 className="headline font-bold text-lg">What will run</h3>
                 </div>
-                <span className={`badge ${loading ? 'badge-mint' : 'badge-slate'}`}>
-                  {loading ? 'Live' : 'Idle'}
-                </span>
+                <span className="badge badge-slate">6 steps</span>
               </div>
-              <div className="space-y-2.5">
-                {ZK_STEPS.map((step, i) => {
-                  const done   = loading && i < zkStep
-                  const active = loading && i === zkStep
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div
-                        className="flex items-center justify-center rounded-full flex-shrink-0"
-                        style={{
-                          width: 22, height: 22,
-                          background: done ? 'rgba(52,211,153,0.18)' : active ? 'rgba(45,212,191,0.22)' : 'var(--surface-3)',
-                          border: `1px solid ${done ? 'rgba(52,211,153,0.55)' : active ? 'var(--mint)' : 'var(--line-2)'}`,
-                        }}>
-                        {done
-                          ? <span className="material-symbols-outlined" style={{ fontSize: 13, color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>check</span>
-                          : active
-                            ? <span className="dot animate-pulse" style={{ background: 'var(--mint)' }} />
-                            : null}
-                      </div>
-                      <span className="text-sm" style={{ color: done || active ? 'var(--ink-2)' : 'var(--ink-5)' }}>{step}</span>
+              <div className="space-y-2">
+                {ZK_STEPS.map((step, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
+                    <div
+                      className="flex items-center justify-center rounded-full flex-shrink-0"
+                      style={{
+                        width: 26, height: 26,
+                        background: 'var(--surface-3)',
+                        border: '1.5px solid var(--line-2)',
+                      }}>
+                      <span className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--ink-4)' }}>{i + 1}</span>
                     </div>
-                  )
-                })}
+                    <span className="text-sm font-medium" style={{ color: 'var(--ink-3)' }}>{step}</span>
+                  </div>
+                ))}
               </div>
+              <p className="text-xs mt-4 flex items-center gap-1.5" style={{ color: 'var(--ink-5)' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--mint-2)', fontVariationSettings: "'FILL' 1" }}>bolt</span>
+                Click <strong style={{ color: 'var(--ink-2)' }}>Submit Claim</strong> to run live.
+              </p>
             </div>
 
             <div className="card p-6">
@@ -364,6 +412,104 @@ export default function UserView({ setCurrentTab }) {
           </aside>
         </div>
       </section>
+
+      {/* ── Full-screen ZK proof overlay ──────────────────────────────── */}
+      {loading && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ background: 'rgba(7,9,15,0.88)', backdropFilter: 'blur(14px)' }}>
+          <div
+            className="flex flex-col items-center gap-6 p-10 rounded-3xl"
+            style={{
+              background: 'var(--surface-2)',
+              border: '1px solid var(--line-3)',
+              boxShadow: '0 32px 80px -16px rgba(0,0,0,0.75)',
+              width: '90vw', maxWidth: 480,
+            }}>
+            {/* spinning ring */}
+            <div className="relative flex items-center justify-center" style={{ width: 72, height: 72 }}>
+              <div
+                className="absolute inset-0 rounded-full animate-spin"
+                style={{ border: '2px solid transparent', borderTopColor: 'var(--mint)', borderRightColor: 'var(--mint)' }} />
+              <div
+                className="flex items-center justify-center rounded-full"
+                style={{ width: 52, height: 52, background: 'rgba(45,212,191,0.12)', border: '1px solid rgba(45,212,191,0.3)' }}>
+                <span className="material-symbols-outlined" style={{ color: 'var(--mint-2)', fontSize: 24, fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="eyebrow mb-1">Zero-knowledge proof</p>
+              <h2 className="headline font-black text-2xl">Generating your proof</h2>
+              <p className="text-sm mt-2" style={{ color: 'var(--ink-3)' }}>
+                Running the Compact circuit on Midnight Network
+              </p>
+            </div>
+
+            <div className="w-full space-y-2.5">
+              {ZK_STEPS.map((step, i) => {
+                const done   = i < zkStep
+                const active = i === zkStep
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+                    style={{
+                      background: active ? 'rgba(45,212,191,0.09)' : done ? 'rgba(52,211,153,0.04)' : 'var(--surface-3)',
+                      border: `1px solid ${active ? 'rgba(45,212,191,0.35)' : done ? 'rgba(52,211,153,0.2)' : 'var(--line-1)'}`,
+                      boxShadow: active ? '0 0 14px rgba(45,212,191,0.18)' : 'none',
+                    }}>
+                    <div
+                      className="flex items-center justify-center rounded-full flex-shrink-0"
+                      style={{
+                        width: 28, height: 28,
+                        background: done   ? 'rgba(52,211,153,0.20)'
+                                  : active ? 'rgba(45,212,191,0.25)'
+                                           : 'var(--surface-4)',
+                        border: `2px solid ${done   ? 'rgba(52,211,153,0.65)'
+                                             : active ? 'var(--mint)'
+                                                      : 'var(--line-2)'}`,
+                        boxShadow: active ? '0 0 12px rgba(45,212,191,0.5)' : 'none',
+                      }}>
+                      {done
+                        ? <span className="material-symbols-outlined" style={{ fontSize: 15, color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>check</span>
+                        : active
+                          ? <span className="dot" style={{ background: 'var(--mint)', animation: 'pulse 0.8s ease-in-out infinite', width: 8, height: 8 }} />
+                          : <span className="text-[10px] font-bold" style={{ color: 'var(--ink-5)' }}>{i + 1}</span>
+                      }
+                    </div>
+                    <span
+                      className="text-sm font-semibold flex-1"
+                      style={{ color: active ? 'var(--ink-1)' : done ? 'var(--ink-3)' : 'var(--ink-5)' }}>
+                      {step}
+                    </span>
+                    {active && (
+                      <span className="material-symbols-outlined animate-spin" style={{ fontSize: 16, color: 'var(--mint-2)' }}>progress_activity</span>
+                    )}
+                    {done && (
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--success)', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: 'var(--surface-4)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.round((zkStep / (ZK_STEPS.length - 1)) * 100)}%`,
+                  background: 'linear-gradient(90deg, var(--mint), var(--mint-2))',
+                  boxShadow: '0 0 8px rgba(45,212,191,0.6)',
+                }} />
+            </div>
+            <p className="text-xs" style={{ color: 'var(--ink-5)' }}>
+              Step {zkStep + 1} of {ZK_STEPS.length} — identity never leaves your browser
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

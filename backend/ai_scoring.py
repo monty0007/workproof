@@ -101,7 +101,9 @@ def compute_trust_score(
     elif end_dt and end_dt > now:
         score -= PENALTY_FUTURE_DATE
         flags.append("end_date_in_future")
-    elif duration > 0:
+    elif start_dt:
+        # Valid start date in the past or current month → realistic claim,
+        # award the duration credit even if duration_months rounds to 0.
         score += WEIGHT_DURATION_VALID
 
     # Flag unrealistically long tenures (> 40 years = 480 months)
